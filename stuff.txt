@@ -1,0 +1,74 @@
+      
+  List<dynamic> _sortList(List<dynamic> list) {
+    List<dynamic> newList = list;
+    newList.sort((a, b) => a['time'].compareTo(b['time']));
+    return newList;
+  }
+
+
+                   
+
+itemExtent: 110.0,
+
+ return Card(
+                            child: ListTile(
+                              onTap: () => _edit(list, indexMap[index]),
+                              onLongPress: () =>
+                                  _delete(snapshot, indexMap[index]),
+                              title: Column(
+                                children: <Widget>[
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: <Widget>[
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: <Widget>[
+                                          Text(list['title']),
+                                          Text(_toTime(list['time'])),
+                                          Text("Amount: " +
+                                              list['amount'].toString() +
+                                              "g"),
+                                        ],
+                                      ),
+                                      Container(
+                                        height: 30.0,
+                                        width: 1.0,
+                                        color: Theme.of(context).primaryColor,
+                                        margin: const EdgeInsets.only(
+                                            left: 10.0, right: 10.0),
+                                      ),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: <Widget>[
+                                          Text("Calories: "),
+                                          Text("Protein: "),
+                                          Text("Carbs: "),
+                                          Text("Sugars: "),
+                                          Text("Fat: "),
+                                        ],
+                                      ),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: <Widget>[
+                                          Text(_getValue(list['calories'],
+                                              list['amount'], list['per100'])),
+                                          Text(_getValue(list['protein'],
+                                              list['amount'], list['per100'])),
+                                          Text(_getValue(list['carbohydrates'],
+                                              list['amount'], list['per100'])),
+                                          Text(_getValue(list['sugars'],
+                                              list['amount'], list['per100'])),
+                                          Text(_getValue(list['fat'],
+                                              list['amount'], list['per100'])),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
