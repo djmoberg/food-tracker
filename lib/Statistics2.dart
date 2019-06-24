@@ -33,8 +33,11 @@ class _MyStatisticsState extends State<MyStatistics> {
 
   _MyStatisticsState(this._user);
 
-  bool _sortAllBy100 = false;
-  DateTime _filterDay = DateTime.now();
+  DateTime _fromDay = DateTime.now().subtract(Duration(days: 6));
+  DateTime _toDay = DateTime.now();
+  List<dynamic> _stuff = List();
+  int _daysNoMeal = 0;
+  bool _listen = true;
 
   Widget _totals(List<dynamic> list) {
     double _calories = 0.0;
@@ -74,23 +77,44 @@ class _MyStatisticsState extends State<MyStatistics> {
     );
   }
 
-  Map<int, int> _indexMap(List<dynamic> list) {
-    int index = 0;
-    int fIndex = 0;
-    Map<int, int> map = Map();
+  Widget _averages(List<dynamic> list) {
+    double _calories = 0.0;
+    double _protein = 0.0;
+    double _carbohydrates = 0.0;
+    double _sugars = 0.0;
+    double _fat = 0.0;
+
+    double total = 1.0;
 
     list.forEach((value) {
-      if (DateTime.fromMillisecondsSinceEpoch(
-                  Map<String, dynamic>.from(value)['time'])
-              .day ==
-          _filterDay.day) {
-        map[fIndex] = index;
-        fIndex++;
+      if (value['per100']) {
+        total = value['amount'] / 100.0;
+      } else {
+        total = 1.0;
       }
-      index++;
+      _calories = double.parse(
+          (_calories + value['calories'] * total).toStringAsFixed(2));
+      _protein = double.parse(
+          (_protein + value['protein'] * total).toStringAsFixed(2));
+      _carbohydrates = double.parse(
+          (_carbohydrates + value['carbohydrates'] * total).toStringAsFixed(2));
+      _sugars =
+          double.parse((_sugars + value['sugars'] * total).toStringAsFixed(2));
+      _fat = double.parse((_fat + value['fat'] * total).toStringAsFixed(2));
     });
 
-    return map;
+    int days = _toDay.difference(_fromDay).inDays + 1;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: <Widget>[
+        Text("${(_calories / (days - _daysNoMeal)).toStringAsFixed(2)} kcal"),
+        Text("${(_protein / (days - _daysNoMeal)).toStringAsFixed(2)} g"),
+        Text("${(_carbohydrates / (days - _daysNoMeal)).toStringAsFixed(2)} g"),
+        Text("${(_sugars / (days - _daysNoMeal)).toStringAsFixed(2)} g"),
+        Text("${(_fat / (days - _daysNoMeal)).toStringAsFixed(2)} g"),
+      ],
+    );
   }
 
   String _toDate(int time) {
@@ -101,108 +125,220 @@ class _MyStatisticsState extends State<MyStatistics> {
     return "$d.$m.$y";
   }
 
-  List<dynamic> _filterList(List<dynamic> list) {
-    List<dynamic> newList = List();
+  void _test() {
+    int days = _toDay.difference(_fromDay).inDays;
+    int day = _fromDay.millisecondsSinceEpoch;
+    List<dynamic> data = List();
 
-    list.forEach((value) {
-      DateTime dt = DateTime.fromMillisecondsSinceEpoch(
-          Map<String, dynamic>.from(value)['time']);
-      if (dt.day == _filterDay.day &&
-          dt.month == _filterDay.month &&
-          dt.year == _filterDay.year) {
-        newList.add(value);
-      }
+    setState(() {
+      _daysNoMeal = 0;
     });
 
-    return newList;
+    for (int i = 0; i <= days && _listen; i++) {
+      DocumentReference dr = Firestore.instance
+          .collection('users')
+          .document(_user.uid)
+          .collection('meals')
+          .document(_toDate(day));
+      dr.snapshots().listen((snapshot) {
+        if (snapshot.exists) {
+          List.from(snapshot.data['meals']).forEach((value) {
+            data.add(value);
+          });
+
+          setState(() {
+            _stuff = data;
+          });
+        } else {
+          setState(() {
+            _daysNoMeal = _daysNoMeal + 1;
+          });
+        }
+      });
+      day = day + Duration.millisecondsPerDay;
+    }
+    setState(() {
+      _listen = false;
+    });
+  }
+
+  Widget _daysNoMealText() {
+    String text = "";
+    if (_daysNoMeal == 0) {
+      text = "";
+    } else if (_daysNoMeal == 1) {
+      text = "Found 1 day with no meals\nThis will not be calculated";
+    } else {
+      text =
+          "Found $_daysNoMeal days with no meals\nThese will not be calculated";
+    }
+    return Text(
+      text,
+      textAlign: TextAlign.center,
+      style: TextStyle(color: Theme.of(context).errorColor),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding:
-          const EdgeInsets.only(bottom: 0.0, left: 0.0, right: 0.0, top: 16.0),
-      child: Column(
-        children: <Widget>[
-          StreamBuilder(
-            stream: Firestore.instance
-                .collection('users')
-                .document(_user.uid)
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) return const Text("Loading...");
-              if (snapshot.data['meals'].length == 0)
-                return const Text("Welcome!");
-              double width = MediaQuery.of(context).size.width;
-              return Expanded(
-                child: Column(
-                  children: <Widget>[
-                    FlatButton(
-                      child: Text(
-                        "Meals ${_toDate(_filterDay.millisecondsSinceEpoch)}",
-                        style: Theme.of(context).textTheme.headline,
-                      ),
-                      onPressed: () async {
-                        DateTime dt = await showDatePicker(
-                            context: context,
-                            initialDate: _filterDay,
-                            firstDate: DateTime(2018),
-                            lastDate: DateTime.now());
+    if (_listen) {
+      _test();
+    }
+    double width = MediaQuery.of(context).size.width;
+    return ListView(
+      padding: EdgeInsets.only(top: 16.0),
+      children: <Widget>[
+        Text(
+          "Statistics",
+          //last ${_toDay.difference(_fromDay).inDays + 1} days
+          style: Theme.of(context).textTheme.display1,
+          textAlign: TextAlign.center,
+        ),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: (width * 0.20) + 16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: <Widget>[
+              Text("Start"),
+              FlatButton(
+                padding: EdgeInsets.all(0.0),
+                child: Text(
+                  "${_toDate(_fromDay.millisecondsSinceEpoch)}",
+                  style: Theme.of(context).textTheme.headline,
+                ),
+                onPressed: () async {
+                  DateTime dt = await showDatePicker(
+                      context: context,
+                      initialDate: _fromDay,
+                      firstDate: DateTime(2018),
+                      lastDate: _toDay);
 
-                        if (dt != null) {
-                          setState(() {
-                            _filterDay = dt;
-                          });
-                        }
-                      },
-                    ),
-                    Padding(
-                      padding: EdgeInsets.symmetric(
-                          horizontal: (width * 0.16) + 16.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: <Widget>[
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text("Calories: "),
-                              Text("Protein: "),
-                              Text("Carbohydrates: "),
-                              Text("Sugars: "),
-                              Text("Fat: "),
-                            ],
-                          ),
-                          _totals(_filterList(snapshot.data['meals'])),
-                        ],
+                  if (dt != null) {
+                    setState(() {
+                      _fromDay = dt;
+                      _listen = true;
+                    });
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: (width * 0.20) + 16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: <Widget>[
+              Text("End"),
+              FlatButton(
+                padding: EdgeInsets.all(0.0),
+                child: Text(
+                  "${_toDate(_toDay.millisecondsSinceEpoch)}",
+                  style: Theme.of(context).textTheme.headline,
+                ),
+                onPressed: () async {
+                  DateTime dt = await showDatePicker(
+                      context: context,
+                      initialDate: _toDay,
+                      firstDate: _fromDay,
+                      lastDate: DateTime.now());
+
+                  if (dt != null) {
+                    setState(() {
+                      _toDay = dt;
+                      _listen = true;
+                    });
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+        _daysNoMealText(),
+        SizedBox(
+          height: 16.0,
+        ),
+        Text(
+          "Average",
+          style: Theme.of(context).textTheme.headline,
+          textAlign: TextAlign.center,
+        ),
+        SizedBox(
+          height: 8.0,
+        ),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: (width * 0.16) + 16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: <Widget>[
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text("Calories: "),
+                  Text("Protein: "),
+                  Text("Carbohydrates: "),
+                  Text("Sugars: "),
+                  Text("Fat: "),
+                ],
+              ),
+              _averages(_stuff),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 32.0,
+        ),
+        Text(
+          "Total",
+          style: Theme.of(context).textTheme.headline,
+          textAlign: TextAlign.center,
+        ),
+        SizedBox(
+          height: 8.0,
+        ),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: (width * 0.16) + 16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: <Widget>[
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text("Calories: "),
+                  Text("Protein: "),
+                  Text("Carbohydrates: "),
+                  Text("Sugars: "),
+                  Text("Fat: "),
+                ],
+              ),
+              _totals(_stuff),
+            ],
+          ),
+        ),
+        Padding(
+          padding:
+              const EdgeInsets.symmetric(horizontal: 100.0, vertical: 16.0),
+          child: RaisedButton(
+            child: Text("View"),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => Scaffold(
+                        appBar: AppBar(
+                          title: Text("Meals"),
+                        ),
+                        body: MealList(
+                          _user,
+                          _stuff,
+                        ),
                       ),
-                    ),
-                    RaisedButton(
-                      child: Text("View"),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => Scaffold(
-                                  appBar: AppBar(
-                                    title: Text("Meals"),
-                                  ),
-                                  body: MealList(
-                                    _user,
-                                    _filterList(snapshot.data['meals']),
-                                    _indexMap(snapshot.data['meals']),
-                                  ),
-                                ),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
                 ),
               );
             },
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

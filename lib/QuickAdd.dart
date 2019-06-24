@@ -98,7 +98,7 @@ class QuickAdd extends StatelessWidget {
                       list['time'] = DateTime.now().millisecondsSinceEpoch;
                       newList.add(list);
                       await transaction
-                          .update(freshSnap.reference, {"meals": newList});
+                          .set(freshSnap.reference, {"meals": newList});
                     }
                     Navigator.pop(context);
                     Navigator.pop(context);

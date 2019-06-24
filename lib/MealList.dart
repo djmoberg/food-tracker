@@ -8,33 +8,30 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class MealList extends StatelessWidget {
   final FirebaseUser _user;
   final List<dynamic> _fList;
-  final Map<int, int> _indexMap;
 
-  MealList(this._user, this._fList, this._indexMap);
+  MealList(this._user, this._fList);
 
   @override
   Widget build(BuildContext context) {
-    return MyMealList(_user, _fList, _indexMap);
+    return MyMealList(_user, _fList);
   }
 }
 
 class MyMealList extends StatefulWidget {
   final List<dynamic> _fList;
   final FirebaseUser _user;
-  final Map<int, int> _indexMap;
 
-  MyMealList(this._user, this._fList, this._indexMap);
+  MyMealList(this._user, this._fList);
 
   @override
-  _MyMealListState createState() => _MyMealListState(_user, _fList, _indexMap);
+  _MyMealListState createState() => _MyMealListState(_user, _fList);
 }
 
 class _MyMealListState extends State<MyMealList> {
   final List<dynamic> _fList;
   final FirebaseUser _user;
-  final Map<int, int> _indexMap;
 
-  _MyMealListState(this._user, this._fList, this._indexMap);
+  _MyMealListState(this._user, this._fList);
 
   bool _sortAllBy100 = false;
 
@@ -52,6 +49,14 @@ class _MyMealListState extends State<MyMealList> {
     String h = t.hour < 10 ? "0${t.hour}" : t.hour.toString();
     String m = t.minute < 10 ? "0${t.minute}" : t.minute.toString();
     return "$h:$m";
+  }
+
+  String _toDate(int time) {
+    DateTime t = DateTime.fromMillisecondsSinceEpoch(time);
+    String d = t.day < 10 ? "0${t.day}" : t.day.toString();
+    String m = t.month < 10 ? "0${t.month}" : t.month.toString();
+    String y = t.year.toString();
+    return "$d.$m.$y";
   }
 
   void _edit(list, index) {
@@ -113,6 +118,43 @@ class _MyMealListState extends State<MyMealList> {
     );
   }
 
+  Widget _addSpace(index) {
+    DateTime dt = DateTime.fromMillisecondsSinceEpoch(
+        Map<String, dynamic>.from(_fList[index])['time']);
+    if (index != 0) {
+      DateTime dt2 = DateTime.fromMillisecondsSinceEpoch(
+          Map<String, dynamic>.from(_fList[index - 1])['time']);
+      if (dt.day != dt2.day) {
+        return Column(
+          children: <Widget>[
+            SizedBox(
+              height: 16.0,
+            ),
+            Text(
+              _toDate(dt.millisecondsSinceEpoch),
+              style: Theme.of(context).textTheme.headline,
+            ),
+          ],
+        );
+      }
+    } else {
+      return Column(
+        children: <Widget>[
+          SizedBox(
+            height: 16.0,
+          ),
+          Text(
+            _toDate(dt.millisecondsSinceEpoch),
+            style: Theme.of(context).textTheme.headline,
+          ),
+        ],
+      );
+    }
+    return SizedBox(
+      height: 0.0,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -156,122 +198,131 @@ class _MyMealListState extends State<MyMealList> {
         Expanded(
           child: ListView.builder(
             // itemExtent: 110.0,
-            itemCount: _fList.length + 1,
+            itemCount: _fList.length,
             itemBuilder: (context, index) {
-              if (index == _fList.length)
-                return SizedBox(
-                  height: 70.0,
-                );
               var list = Map<String, dynamic>.from(_fList[index]);
 
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Card(
-                  child: ListTile(
-                    onTap: () => _edit(list, _indexMap[index]),
-                    onLongPress: () => _delete(_indexMap[index]),
-                    title: Column(
-                      children: <Widget>[
-                        Center(
-                          child: Text(
-                            list['title'],
-                            style: Theme.of(context).textTheme.title,
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              return Column(
+                children: <Widget>[
+                  _addSpace(index),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Card(
+                      child: ListTile(
+                        // onTap: () => _edit(list, index),
+                        // onLongPress: () => _delete(index),
+                        title: Column(
                           children: <Widget>[
-                            Text(_toTime(list['time'])),
-                            Text(list['amount'].toString() + "g"),
-                          ],
-                        ),
-                        Divider(),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: <Widget>[
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: <Widget>[
-                                  Text(
-                                    "Calories: ",
-                                    style: Theme.of(context).textTheme.body1,
-                                  ),
-                                  Text(
-                                    "Protein: ",
-                                    style: Theme.of(context).textTheme.body1,
-                                  ),
-                                  Text(
-                                    "Carbs: ",
-                                    style: Theme.of(context).textTheme.body1,
-                                  ),
-                                ],
+                            Center(
+                              child: Text(
+                                list['title'],
+                                style: Theme.of(context).textTheme.title,
+                                textAlign: TextAlign.center,
                               ),
                             ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: <Widget>[
-                                Text(
-                                  _getValue(list['calories'], list['amount'],
-                                      list['per100']),
-                                  style: Theme.of(context).textTheme.body2,
+                                Text(_toTime(list['time'])),
+                                // Text(_toDate(list['time'])),
+                                Text(list['amount'].toString() + "g"),
+                              ],
+                            ),
+                            Divider(),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: <Widget>[
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: <Widget>[
+                                      Text(
+                                        "Calories: ",
+                                        style:
+                                            Theme.of(context).textTheme.body1,
+                                      ),
+                                      Text(
+                                        "Protein: ",
+                                        style:
+                                            Theme.of(context).textTheme.body1,
+                                      ),
+                                      Text(
+                                        "Carbs: ",
+                                        style:
+                                            Theme.of(context).textTheme.body1,
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                Text(
-                                  _getValue(list['protein'], list['amount'],
-                                      list['per100']),
-                                  style: Theme.of(context).textTheme.body2,
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: <Widget>[
+                                    Text(
+                                      _getValue(list['calories'],
+                                          list['amount'], list['per100']),
+                                      style: Theme.of(context).textTheme.body2,
+                                    ),
+                                    Text(
+                                      _getValue(list['protein'], list['amount'],
+                                          list['per100']),
+                                      style: Theme.of(context).textTheme.body2,
+                                    ),
+                                    Text(
+                                      _getValue(list['carbohydrates'],
+                                          list['amount'], list['per100']),
+                                      style: Theme.of(context).textTheme.body2,
+                                    ),
+                                  ],
                                 ),
-                                Text(
-                                  _getValue(list['carbohydrates'],
-                                      list['amount'], list['per100']),
-                                  style: Theme.of(context).textTheme.body2,
+                                Container(
+                                  height: 30.0,
+                                  width: 1.0,
+                                  color: Theme.of(context).primaryColor,
+                                  margin: const EdgeInsets.only(
+                                      left: 10.0, right: 10.0),
+                                ),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: <Widget>[
+                                      Text(
+                                        "Sugars: ",
+                                        style:
+                                            Theme.of(context).textTheme.body1,
+                                      ),
+                                      Text(
+                                        "Fat: ",
+                                        style:
+                                            Theme.of(context).textTheme.body1,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: <Widget>[
+                                    Text(
+                                      _getValue(list['sugars'], list['amount'],
+                                          list['per100']),
+                                      style: Theme.of(context).textTheme.body2,
+                                    ),
+                                    Text(
+                                      _getValue(list['fat'], list['amount'],
+                                          list['per100']),
+                                      style: Theme.of(context).textTheme.body2,
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
-                            Container(
-                              height: 30.0,
-                              width: 1.0,
-                              color: Theme.of(context).primaryColor,
-                              margin: const EdgeInsets.only(
-                                  left: 10.0, right: 10.0),
-                            ),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: <Widget>[
-                                  Text(
-                                    "Sugars: ",
-                                    style: Theme.of(context).textTheme.body1,
-                                  ),
-                                  Text(
-                                    "Fat: ",
-                                    style: Theme.of(context).textTheme.body1,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: <Widget>[
-                                Text(
-                                  _getValue(list['sugars'], list['amount'],
-                                      list['per100']),
-                                  style: Theme.of(context).textTheme.body2,
-                                ),
-                                Text(
-                                  _getValue(list['fat'], list['amount'],
-                                      list['per100']),
-                                  style: Theme.of(context).textTheme.body2,
-                                ),
-                              ],
-                            ),
                           ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
+                ],
               );
             },
           ),

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:food_tracker/Add.dart';
 import 'package:food_tracker/Today.dart';
-import 'package:food_tracker/Statistics.dart';
+import 'package:food_tracker/Statistics2.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
 
